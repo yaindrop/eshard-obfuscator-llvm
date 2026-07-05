@@ -1,43 +1,36 @@
-# About
+# LLVM 22 obfuscator plugin
 
-LLVM obfuscation is a LLVM pass plugin, used to apply transformation on [LLVM assembly language](https://llvm.org/docs/LangRef.html) to provide obfuscation.
+This fork is an LLVM 22 native obfuscation pass plugin. It applies
+transformations on [LLVM IR](https://llvm.org/docs/LangRef.html) through the
+modern LLVM pass plugin API.
+
+Only LLVM 22.x is supported. Older LLVM pass-manager compatibility code has
+been removed on purpose.
 
 ## Compilation
 
-To build this plugin you need to build LLVM. Refer to the [documentation](https://llvm.org/docs/CMake.html) for more information. 
-
-Here's how you can download, build and install LLVM:
-```
-git clone --depth 1 --branch llvmorg-14.0.6 https://github.com/llvm/llvm-project.git
-cd llvm-project
-
-mkdir -p build && cd build
-cmake -G "Ninja" -DCMAKE_INSTALL_PREFIX=/opt/llvm ..
-ninja -j$(nproc)
-ninja install
-```
-
-Then, to compile the plugin:
+Build against an LLVM 22 installation:
 
 ```
-git clone https://github.com/eshard/obfuscator-llvm.git
-cd obfuscator-llvm
-
-mkdir -p build && cd build
-cmake -G "Ninja" -DLLVM_DIR=/opt/llvm/lib/cmake ..
-ninja -j$(nproc)
+cmake -S . -B build -G Ninja \
+  -DLLVM_DIR=/opt/homebrew/opt/llvm@22/lib/cmake/llvm \
+  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@22/bin/clang \
+  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@22/bin/clang++
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
 ```
 
-If the compilation is successful the plugin is `libLLVMObfuscator.so` and can be used with **clang** (`-fpass-plugin=`) or **opt** (`-load-pass-plugin`).
+If the compilation is successful, the plugin is `libLLVMObfuscator` with the
+platform shared-library extension and can be used with **clang**
+(`-fpass-plugin=`) or **opt** (`-load-pass-plugin`).
 
 ## Usage
 
 ### With clang
 
-This plugin can be used with clang's switch `-fpass-plugin` and depending on your llvm version in addition
-you may need to specify `-fno-legacy-pass-manager`.
+This plugin can be used with clang's switch `-fpass-plugin`.
 
-`clang -fno-legacy-pass-manager -fpass-plugin=<path/to/llvm/obfuscation>/libLLVMObfuscator.so hello_world.c -o hello_world`
+`clang -fpass-plugin=<path/to/libLLVMObfuscator> hello_world.c -o hello_world`
 
 You can chose to insert passes in the optimization pipeline by setting the following environment variables before running clang:
 - LLVM_OBF_PEEPHOLE_PASSES
@@ -57,22 +50,19 @@ Refer to the llvm::PassBuilder documentation for more information on each insert
 
 ### With opt
 
-[`opt`](https://llvm.org/docs/CommandGuide/opt.html) can be used to apply specific passes from LLRM-IR you
+[`opt`](https://llvm.org/docs/CommandGuide/opt.html) can be used to apply specific passes from LLVM IR you
 would pre-generate using `clang`.
 
 ```
-# pre-generate llvm bytecode
-clang -01 -S -emit-llvm hello_world.c -o hello_world.bc
+# pre-generate LLVM IR
+clang -O1 -S -emit-llvm hello_world.c -o hello_world.ll
 
 # apply the pass
-opt --relocation-model=pic -load-pass-plugin <path/to/llvm/obfuscation>/libLLVMObfuscator.so
--passes="<my-pass-name>" hello_world.bc -o hello_world_obfuscated.bc
+opt -S -load-pass-plugin <path/to/libLLVMObfuscator> \
+  -passes="<my-pass-name>" hello_world.ll -o hello_world_obfuscated.ll
 
-# generate an object file with llc
-llc --relocation-model=pic -filetype=obj hello_world_obfuscated.bc -o hello_world_obfuscated.o
-
-# generate the binary file with clang
-clang hello_world_obfuscated.o -o hello_world_obfuscated
+# generate the binary file
+clang hello_world_obfuscated.ll -o hello_world_obfuscated
 ```
 
 ### Debugging
@@ -83,13 +73,16 @@ encryption).
 The variable should contain a hex string of 32 characters or 34 characters if prefixed with "0x", for example:
 `export LLVM_OBF_SEED="0xA04252B187478C00A40BC6D81D1A8A52"`
 
-The environement variable `LLVM_OBF_DEBUG_SEED` can be set to "y" to enable printing the seed everytime the plugin is loaded.
+The environment variable `LLVM_OBF_DEBUG_SEED` can be set to "y" to print the
+seed every time the plugin is loaded.
 
-## Cross compilation
+## Tests
 
- - [With Android NDK](docs/ANDROID_NDK.md)
+The CTest suite builds small C fixtures, loads the plugin through both clang and
+opt, verifies transformed IR, checks that each pass changes IR structure, and
+executes an obfuscated binary to confirm runtime behavior is preserved.
 
-# Acknowledgement
+## Acknowledgement
 
 This project started from [`Obfuscator-LLVM`](https://github.com/obfuscator-llvm/obfuscator) by the information security group of the University of Applied Sciences and Arts Western Switzerland of Yverdon-les-Bains
 ([HEIG-VD](https://heig-vd.ch/international)).
