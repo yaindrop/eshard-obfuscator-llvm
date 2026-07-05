@@ -11,7 +11,7 @@ endif()
 # Compile the string decode function into IR bitcode and embed it as a c array
 ADD_CUSTOM_COMMAND(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/decode.h
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/generate_ir_header.sh
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/generate_ir_header.sh
                 ${CLANG} ${XXD}
                 ${CMAKE_CURRENT_SOURCE_DIR}/decode.c
                 ${CMAKE_CURRENT_BINARY_DIR} decode.h

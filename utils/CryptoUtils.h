@@ -38,7 +38,9 @@ extern ManagedStatic<CryptoUtils> cryptoutils;
 #define ENDIAN_LITTLE
 #endif
 #define ENDIAN_32BITWORD
+#ifndef UNALIGNED
 #define UNALIGNED
+#endif
 
 #elif defined(__alpha)
 
@@ -53,7 +55,9 @@ extern ManagedStatic<CryptoUtils> cryptoutils;
 #define ENDIAN_LITTLE
 #endif
 #define ENDIAN_64BITWORD
+#ifndef UNALIGNED
 #define UNALIGNED
+#endif
 
 #elif (defined(__R5900) || defined(R5900) || defined(__R5900__)) &&            \
     (defined(_mips) || defined(__mips__) || defined(mips))
