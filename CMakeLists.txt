@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.13.5)
 
 project(llvm-obfuscator)
 
+include(CTest)
+
 find_package(LLVM PATHS "${LLVM_DIR}" REQUIRED CONFIG NO_DEFAULT_PATH)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -57,3 +59,18 @@ add_subdirectory(split)
 add_subdirectory(substitution)
 
 add_subdirectory(string)
+
+if(BUILD_TESTING)
+  find_package(Python3 COMPONENTS Interpreter)
+  if(Python3_Interpreter_FOUND)
+    add_test(
+      NAME llvm22-smoke
+      COMMAND
+        ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_llvm22_smoke.py
+        --plugin $<TARGET_FILE:LLVMObfuscator>
+        --llvm-bin ${LLVM_TOOLS_BINARY_DIR}
+        --filecheck ${LLVM_TOOLS_BINARY_DIR}/FileCheck
+    )
+  endif()
+endif()
