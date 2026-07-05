@@ -7,7 +7,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
+#include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -176,11 +176,7 @@ Function *StringObfuscatorPass::addDecodeFunction(Module &M) {
   SmallVector<ReturnInst *, 8> returns;
   ClonedCodeInfo codeInfo;
   CloneFunctionInto(declaredFunction, loadedFunction, vmap,
-#if LLVM_VERSION_MAJOR < 13
-                    true,
-#else
                     CloneFunctionChangeType::DifferentModule,
-#endif
                     returns, "", &codeInfo);
 
   return declaredFunction;

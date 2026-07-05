@@ -20,7 +20,6 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
-#include "llvm/Pass.h"
 #include "llvm/Transforms/IPO.h"
 
 #define NUMBER_ADD_SUBST 4

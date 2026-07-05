@@ -81,24 +81,6 @@ PreservedAnalyses SubstitutionPass::run(Function &F,
                             : PreservedAnalyses::all();
 }
 
-struct LegacySubstitution : public FunctionPass, public Substitution {
-  static char ID; // Pass identification, replacement for typeid
-
-  LegacySubstitution() : FunctionPass(ID) {}
-  LegacySubstitution(bool flag) : FunctionPass(ID) {}
-
-  bool runOnFunction(Function &F);
-};
-
-char LegacySubstitution::ID = 0;
-static RegisterPass<LegacySubstitution> X("substitution",
-                                          "operators substitution");
-Pass *createSubstitution(bool flag) { return new LegacySubstitution(flag); }
-
-bool LegacySubstitution::runOnFunction(Function &F) {
-  return runSubstitution(F);
-}
-
 bool Substitution::runSubstitution(Function &F) {
   // Check if the percentage is correct
   if (ObfTimes <= 0) {
@@ -194,9 +176,9 @@ void Substitution::addNeg(BinaryOperator *bo) {
 
   // Create sub
   if (bo->getOpcode() == Instruction::Add) {
-    op = BinaryOperator::CreateNeg(bo->getOperand(1), "", bo);
+    op = BinaryOperator::CreateNeg(bo->getOperand(1), "", bo->getIterator());
     op =
-        BinaryOperator::Create(Instruction::Sub, bo->getOperand(0), op, "", bo);
+        BinaryOperator::Create(Instruction::Sub, bo->getOperand(0), op, "", bo->getIterator());
 
     // Check signed wrap
     // op->setHasNoSignedWrap(bo->hasNoSignedWrap());
@@ -204,7 +186,7 @@ void Substitution::addNeg(BinaryOperator *bo) {
 
     bo->replaceAllUsesWith(op);
   } /* else {
-     op = BinaryOperator::CreateFNeg(bo->getOperand(1), "", bo);
+     op = BinaryOperator::CreateFNeg(bo->getOperand(1), "", bo->getIterator());
      op = BinaryOperator::Create(Instruction::FSub, bo->getOperand(0), op, "",
                                  bo);
    }*/
@@ -216,20 +198,20 @@ void Substitution::addDoubleNeg(BinaryOperator *bo) {
   UnaryOperator *op3, *op4;
 
   if (bo->getOpcode() == Instruction::Add) {
-    op = BinaryOperator::CreateNeg(bo->getOperand(0), "", bo);
-    op2 = BinaryOperator::CreateNeg(bo->getOperand(1), "", bo);
-    op = BinaryOperator::Create(Instruction::Add, op, op2, "", bo);
-    op = BinaryOperator::CreateNeg(op, "", bo);
+    op = BinaryOperator::CreateNeg(bo->getOperand(0), "", bo->getIterator());
+    op2 = BinaryOperator::CreateNeg(bo->getOperand(1), "", bo->getIterator());
+    op = BinaryOperator::Create(Instruction::Add, op, op2, "", bo->getIterator());
+    op = BinaryOperator::CreateNeg(op, "", bo->getIterator());
 
     bo->replaceAllUsesWith(op);
     // Check signed wrap
     // op->setHasNoSignedWrap(bo->hasNoSignedWrap());
     // op->setHasNoUnsignedWrap(bo->hasNoUnsignedWrap());
   } else {
-    op3 = UnaryOperator::CreateFNeg(bo->getOperand(0), "", bo);
-    op4 = UnaryOperator::CreateFNeg(bo->getOperand(1), "", bo);
-    op = BinaryOperator::Create(Instruction::FAdd, op3, op4, "", bo);
-    op3 = UnaryOperator::CreateFNeg(op, "", bo);
+    op3 = UnaryOperator::CreateFNeg(bo->getOperand(0), "", bo->getIterator());
+    op4 = UnaryOperator::CreateFNeg(bo->getOperand(1), "", bo->getIterator());
+    op = BinaryOperator::Create(Instruction::FAdd, op3, op4, "", bo->getIterator());
+    op3 = UnaryOperator::CreateFNeg(op, "", bo->getIterator());
 
     bo->replaceAllUsesWith(op3);
   }
@@ -244,10 +226,10 @@ void Substitution::addRand(BinaryOperator *bo) {
     ConstantInt *co =
         (ConstantInt *)ConstantInt::get(ty, llvm::cryptoutils->get_uint64_t());
     op =
-        BinaryOperator::Create(Instruction::Add, bo->getOperand(0), co, "", bo);
+        BinaryOperator::Create(Instruction::Add, bo->getOperand(0), co, "", bo->getIterator());
     op =
-        BinaryOperator::Create(Instruction::Add, op, bo->getOperand(1), "", bo);
-    op = BinaryOperator::Create(Instruction::Sub, op, co, "", bo);
+        BinaryOperator::Create(Instruction::Add, op, bo->getOperand(1), "", bo->getIterator());
+    op = BinaryOperator::Create(Instruction::Sub, op, co, "", bo->getIterator());
 
     // Check signed wrap
     // op->setHasNoSignedWrap(bo->hasNoSignedWrap());
@@ -274,10 +256,10 @@ void Substitution::addRand2(BinaryOperator *bo) {
     ConstantInt *co =
         (ConstantInt *)ConstantInt::get(ty, llvm::cryptoutils->get_uint64_t());
     op =
-        BinaryOperator::Create(Instruction::Sub, bo->getOperand(0), co, "", bo);
+        BinaryOperator::Create(Instruction::Sub, bo->getOperand(0), co, "", bo->getIterator());
     op =
-        BinaryOperator::Create(Instruction::Add, op, bo->getOperand(1), "", bo);
-    op = BinaryOperator::Create(Instruction::Add, op, co, "", bo);
+        BinaryOperator::Create(Instruction::Add, op, bo->getOperand(1), "", bo->getIterator());
+    op = BinaryOperator::Create(Instruction::Add, op, co, "", bo->getIterator());
 
     // Check signed wrap
     // op->setHasNoSignedWrap(bo->hasNoSignedWrap());
@@ -300,17 +282,17 @@ void Substitution::subNeg(BinaryOperator *bo) {
   BinaryOperator *op = NULL;
 
   if (bo->getOpcode() == Instruction::Sub) {
-    op = BinaryOperator::CreateNeg(bo->getOperand(1), "", bo);
+    op = BinaryOperator::CreateNeg(bo->getOperand(1), "", bo->getIterator());
     op =
-        BinaryOperator::Create(Instruction::Add, bo->getOperand(0), op, "", bo);
+        BinaryOperator::Create(Instruction::Add, bo->getOperand(0), op, "", bo->getIterator());
 
     // Check signed wrap
     // op->setHasNoSignedWrap(bo->hasNoSignedWrap());
     // op->setHasNoUnsignedWrap(bo->hasNoUnsignedWrap());
   } else {
-    auto op1 = UnaryOperator::CreateFNeg(bo->getOperand(1), "", bo);
+    auto op1 = UnaryOperator::CreateFNeg(bo->getOperand(1), "", bo->getIterator());
     op = BinaryOperator::Create(Instruction::FAdd, bo->getOperand(0), op1, "",
-                                bo);
+                                bo->getIterator());
   }
 
   bo->replaceAllUsesWith(op);
@@ -325,10 +307,10 @@ void Substitution::subRand(BinaryOperator *bo) {
     ConstantInt *co =
         (ConstantInt *)ConstantInt::get(ty, llvm::cryptoutils->get_uint64_t());
     op =
-        BinaryOperator::Create(Instruction::Add, bo->getOperand(0), co, "", bo);
+        BinaryOperator::Create(Instruction::Add, bo->getOperand(0), co, "", bo->getIterator());
     op =
-        BinaryOperator::Create(Instruction::Sub, op, bo->getOperand(1), "", bo);
-    op = BinaryOperator::Create(Instruction::Sub, op, co, "", bo);
+        BinaryOperator::Create(Instruction::Sub, op, bo->getOperand(1), "", bo->getIterator());
+    op = BinaryOperator::Create(Instruction::Sub, op, co, "", bo->getIterator());
 
     // Check signed wrap
     // op->setHasNoSignedWrap(bo->hasNoSignedWrap());
@@ -355,10 +337,10 @@ void Substitution::subRand2(BinaryOperator *bo) {
     ConstantInt *co =
         (ConstantInt *)ConstantInt::get(ty, llvm::cryptoutils->get_uint64_t());
     op =
-        BinaryOperator::Create(Instruction::Sub, bo->getOperand(0), co, "", bo);
+        BinaryOperator::Create(Instruction::Sub, bo->getOperand(0), co, "", bo->getIterator());
     op =
-        BinaryOperator::Create(Instruction::Sub, op, bo->getOperand(1), "", bo);
-    op = BinaryOperator::Create(Instruction::Add, op, co, "", bo);
+        BinaryOperator::Create(Instruction::Sub, op, bo->getOperand(1), "", bo->getIterator());
+    op = BinaryOperator::Create(Instruction::Add, op, co, "", bo->getIterator());
 
     // Check signed wrap
     // op->setHasNoSignedWrap(bo->hasNoSignedWrap());
@@ -381,14 +363,14 @@ void Substitution::andSubstitution(BinaryOperator *bo) {
   BinaryOperator *op = NULL;
 
   // Create NOT on second operand => ~c
-  op = BinaryOperator::CreateNot(bo->getOperand(1), "", bo);
+  op = BinaryOperator::CreateNot(bo->getOperand(1), "", bo->getIterator());
 
   // Create XOR => (b^~c)
   BinaryOperator *op1 =
-      BinaryOperator::Create(Instruction::Xor, bo->getOperand(0), op, "", bo);
+      BinaryOperator::Create(Instruction::Xor, bo->getOperand(0), op, "", bo->getIterator());
 
   // Create AND => (b^~c) & b
-  op = BinaryOperator::Create(Instruction::And, op1, bo->getOperand(0), "", bo);
+  op = BinaryOperator::Create(Instruction::And, op1, bo->getOperand(0), "", bo->getIterator());
   bo->replaceAllUsesWith(op);
 }
 
@@ -403,26 +385,26 @@ void Substitution::andSubstitutionRand(BinaryOperator *bo) {
       (ConstantInt *)ConstantInt::get(ty, llvm::cryptoutils->get_uint64_t());
 
   // !a
-  BinaryOperator *op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo);
+  BinaryOperator *op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo->getIterator());
 
   // !b
-  BinaryOperator *op1 = BinaryOperator::CreateNot(bo->getOperand(1), "", bo);
+  BinaryOperator *op1 = BinaryOperator::CreateNot(bo->getOperand(1), "", bo->getIterator());
 
   // !r
-  BinaryOperator *opr = BinaryOperator::CreateNot(co, "", bo);
+  BinaryOperator *opr = BinaryOperator::CreateNot(co, "", bo->getIterator());
 
   // (!a | !b)
   BinaryOperator *opa =
-      BinaryOperator::Create(Instruction::Or, op, op1, "", bo);
+      BinaryOperator::Create(Instruction::Or, op, op1, "", bo->getIterator());
 
   // (r | !r)
-  opr = BinaryOperator::Create(Instruction::Or, co, opr, "", bo);
+  opr = BinaryOperator::Create(Instruction::Or, co, opr, "", bo->getIterator());
 
   // !(!a | !b)
-  op = BinaryOperator::CreateNot(opa, "", bo);
+  op = BinaryOperator::CreateNot(opa, "", bo->getIterator());
 
   // !(!a | !b) && (r | !r)
-  op = BinaryOperator::Create(Instruction::And, op, opr, "", bo);
+  op = BinaryOperator::Create(Instruction::And, op, opr, "", bo->getIterator());
 
   // We replace all the old AND operators with the new one transformed
   bo->replaceAllUsesWith(op);
@@ -436,54 +418,54 @@ void Substitution::orSubstitutionRand(BinaryOperator *bo) {
       (ConstantInt *)ConstantInt::get(ty, llvm::cryptoutils->get_uint64_t());
 
   // !a
-  BinaryOperator *op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo);
+  BinaryOperator *op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo->getIterator());
 
   // !b
-  BinaryOperator *op1 = BinaryOperator::CreateNot(bo->getOperand(1), "", bo);
+  BinaryOperator *op1 = BinaryOperator::CreateNot(bo->getOperand(1), "", bo->getIterator());
 
   // !r
-  BinaryOperator *op2 = BinaryOperator::CreateNot(co, "", bo);
+  BinaryOperator *op2 = BinaryOperator::CreateNot(co, "", bo->getIterator());
 
   // !a && r
   BinaryOperator *op3 =
-      BinaryOperator::Create(Instruction::And, op, co, "", bo);
+      BinaryOperator::Create(Instruction::And, op, co, "", bo->getIterator());
 
   // a && !r
   BinaryOperator *op4 =
-      BinaryOperator::Create(Instruction::And, bo->getOperand(0), op2, "", bo);
+      BinaryOperator::Create(Instruction::And, bo->getOperand(0), op2, "", bo->getIterator());
 
   // !b && r
   BinaryOperator *op5 =
-      BinaryOperator::Create(Instruction::And, op1, co, "", bo);
+      BinaryOperator::Create(Instruction::And, op1, co, "", bo->getIterator());
 
   // b && !r
   BinaryOperator *op6 =
-      BinaryOperator::Create(Instruction::And, bo->getOperand(1), op2, "", bo);
+      BinaryOperator::Create(Instruction::And, bo->getOperand(1), op2, "", bo->getIterator());
 
   // (!a && r) || (a && !r)
-  op3 = BinaryOperator::Create(Instruction::Or, op3, op4, "", bo);
+  op3 = BinaryOperator::Create(Instruction::Or, op3, op4, "", bo->getIterator());
 
   // (!b && r) ||(b && !r)
-  op4 = BinaryOperator::Create(Instruction::Or, op5, op6, "", bo);
+  op4 = BinaryOperator::Create(Instruction::Or, op5, op6, "", bo->getIterator());
 
   // (!a && r) || (a && !r) ^ (!b && r) ||(b && !r)
-  op5 = BinaryOperator::Create(Instruction::Xor, op3, op4, "", bo);
+  op5 = BinaryOperator::Create(Instruction::Xor, op3, op4, "", bo->getIterator());
 
   // !a || !b
-  op3 = BinaryOperator::Create(Instruction::Or, op, op1, "", bo);
+  op3 = BinaryOperator::Create(Instruction::Or, op, op1, "", bo->getIterator());
 
   // !(!a || !b)
-  op3 = BinaryOperator::CreateNot(op3, "", bo);
+  op3 = BinaryOperator::CreateNot(op3, "", bo->getIterator());
 
   // r || !r
-  op4 = BinaryOperator::Create(Instruction::Or, co, op2, "", bo);
+  op4 = BinaryOperator::Create(Instruction::Or, co, op2, "", bo->getIterator());
 
   // !(!a || !b) && (r || !r)
-  op4 = BinaryOperator::Create(Instruction::And, op3, op4, "", bo);
+  op4 = BinaryOperator::Create(Instruction::And, op3, op4, "", bo->getIterator());
 
   // [(!a && r) || (a && !r) ^ (!b && r) ||(b && !r) ] || [!(!a || !b) && (r ||
   // !r)]
-  op = BinaryOperator::Create(Instruction::Or, op5, op4, "", bo);
+  op = BinaryOperator::Create(Instruction::Or, op5, op4, "", bo->getIterator());
   bo->replaceAllUsesWith(op);
 }
 
@@ -492,14 +474,14 @@ void Substitution::orSubstitution(BinaryOperator *bo) {
 
   // Creating first operand (b & c)
   op = BinaryOperator::Create(Instruction::And, bo->getOperand(0),
-                              bo->getOperand(1), "", bo);
+                              bo->getOperand(1), "", bo->getIterator());
 
   // Creating second operand (b ^ c)
   BinaryOperator *op1 = BinaryOperator::Create(
-      Instruction::Xor, bo->getOperand(0), bo->getOperand(1), "", bo);
+      Instruction::Xor, bo->getOperand(0), bo->getOperand(1), "", bo->getIterator());
 
   // final op
-  op = BinaryOperator::Create(Instruction::Or, op, op1, "", bo);
+  op = BinaryOperator::Create(Instruction::Or, op, op1, "", bo->getIterator());
   bo->replaceAllUsesWith(op);
 }
 
@@ -508,23 +490,23 @@ void Substitution::xorSubstitution(BinaryOperator *bo) {
   BinaryOperator *op = NULL;
 
   // Create NOT on first operand
-  op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo); // !a
+  op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo->getIterator()); // !a
 
   // Create AND
   op = BinaryOperator::Create(Instruction::And, bo->getOperand(1), op, "",
-                              bo); // !a && b
+                              bo->getIterator()); // !a && b
 
   // Create NOT on second operand
   BinaryOperator *op1 =
-      BinaryOperator::CreateNot(bo->getOperand(1), "", bo); // !b
+      BinaryOperator::CreateNot(bo->getOperand(1), "", bo->getIterator()); // !b
 
   // Create AND
   op1 = BinaryOperator::Create(Instruction::And, bo->getOperand(0), op1, "",
-                               bo); // a && !b
+                               bo->getIterator()); // a && !b
 
   // Create OR
   op = BinaryOperator::Create(Instruction::Or, op, op1, "",
-                              bo); // (!a && b) || (a && !b)
+                              bo->getIterator()); // (!a && b) || (a && !b)
   bo->replaceAllUsesWith(op);
 }
 
@@ -539,36 +521,36 @@ void Substitution::xorSubstitutionRand(BinaryOperator *bo) {
       (ConstantInt *)ConstantInt::get(ty, llvm::cryptoutils->get_uint64_t());
 
   // !a
-  op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo);
+  op = BinaryOperator::CreateNot(bo->getOperand(0), "", bo->getIterator());
 
   // !a && r
-  op = BinaryOperator::Create(Instruction::And, co, op, "", bo);
+  op = BinaryOperator::Create(Instruction::And, co, op, "", bo->getIterator());
 
   // !r
-  BinaryOperator *opr = BinaryOperator::CreateNot(co, "", bo);
+  BinaryOperator *opr = BinaryOperator::CreateNot(co, "", bo->getIterator());
 
   // a && !r
   BinaryOperator *op1 =
-      BinaryOperator::Create(Instruction::And, bo->getOperand(0), opr, "", bo);
+      BinaryOperator::Create(Instruction::And, bo->getOperand(0), opr, "", bo->getIterator());
 
   // !b
-  BinaryOperator *op2 = BinaryOperator::CreateNot(bo->getOperand(1), "", bo);
+  BinaryOperator *op2 = BinaryOperator::CreateNot(bo->getOperand(1), "", bo->getIterator());
 
   // !b && r
-  op2 = BinaryOperator::Create(Instruction::And, op2, co, "", bo);
+  op2 = BinaryOperator::Create(Instruction::And, op2, co, "", bo->getIterator());
 
   // b && !r
   BinaryOperator *op3 =
-      BinaryOperator::Create(Instruction::And, bo->getOperand(1), opr, "", bo);
+      BinaryOperator::Create(Instruction::And, bo->getOperand(1), opr, "", bo->getIterator());
 
   // (!a && r) || (a && !r)
-  op = BinaryOperator::Create(Instruction::Or, op, op1, "", bo);
+  op = BinaryOperator::Create(Instruction::Or, op, op1, "", bo->getIterator());
 
   // (!b && r) || (b && !r)
-  op1 = BinaryOperator::Create(Instruction::Or, op2, op3, "", bo);
+  op1 = BinaryOperator::Create(Instruction::Or, op2, op3, "", bo->getIterator());
 
   // (!a && r) || (a && !r) ^ (!b && r) || (b && !r)
-  op = BinaryOperator::Create(Instruction::Xor, op, op1, "", bo);
+  op = BinaryOperator::Create(Instruction::Xor, op, op1, "", bo->getIterator());
   bo->replaceAllUsesWith(op);
 }
 

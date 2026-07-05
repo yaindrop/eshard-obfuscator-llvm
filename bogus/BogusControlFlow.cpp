@@ -251,8 +251,10 @@ void BogusControlFlow::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   // part, because they actually are updated in the second part according to
   // them.
   BasicBlock::iterator i1 = basicBlock->begin();
-  if (&*basicBlock->getFirstNonPHIOrDbgOrLifetime())
-    i1 = (BasicBlock::iterator)basicBlock->getFirstNonPHIOrDbgOrLifetime();
+  if (auto nonPhi = basicBlock->getFirstNonPHIOrDbgOrLifetime();
+      nonPhi != basicBlock->end()) {
+    i1 = nonPhi;
+  }
 
   /* TODO: find a real fix or try with the probe-stack inline-asm when its
    * ready. See https://github.com/Rust-for-Linux/linux/issues/355. Sometimes
@@ -262,11 +264,7 @@ void BogusControlFlow::addBogusFlow(BasicBlock *basicBlock, Function &F) {
    * case.
    */
   if (F.hasFnAttribute("probe-stack") &&
-#if LLVM_VERSION_MAJOR < 13
-      (basicBlock == &basicBlock->getParent()->getEntryBlock())
-#else
       basicBlock->isEntryBlock()
-#endif
   ) {
     // Find the first non alloca instruction
     while ((i1 != basicBlock->end()) && isa<AllocaInst>(i1)) {
@@ -308,7 +306,7 @@ void BogusControlFlow::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   // The always true condition. End of the first block
   Twine *var4 = new Twine("condition");
   FCmpInst *condition =
-      new FCmpInst(basicBlock, FCmpInst::FCMP_TRUE, LHS, RHS, *var4);
+      new FCmpInst(basicBlock->end(), FCmpInst::FCMP_TRUE, LHS, RHS, *var4);
   DEBUG_WITH_TYPE("gen", errs() << "bcf: Always true condition created\n");
 
   // Jump to the original basic block if the condition is true or
@@ -344,7 +342,7 @@ void BogusControlFlow::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   // We add at the end a new always true condition
   Twine *var6 = new Twine("condition2");
   FCmpInst *condition2 =
-      new FCmpInst(originalBB, CmpInst::FCMP_TRUE, LHS, RHS, *var6);
+      new FCmpInst(originalBB->end(), CmpInst::FCMP_TRUE, LHS, RHS, *var6);
   BranchInst::Create(originalBBpart2, alteredBB, (Value *)condition2,
                      originalBB);
   DEBUG_WITH_TYPE("gen", errs()
@@ -430,19 +428,19 @@ BasicBlock *BogusControlFlow::createAlteredBasicBlock(BasicBlock *basicBlock,
           case 0:                                    // do nothing
             break;
           case 1:
-            op = BinaryOperator::CreateNeg(i->getOperand(0), *var, &*i);
+            op = BinaryOperator::CreateNeg(i->getOperand(0), *var, i);
             op1 = BinaryOperator::Create(Instruction::Add, op, i->getOperand(1),
-                                         "gen", &*i);
+                                         "gen", i);
             break;
           case 2:
             op1 = BinaryOperator::Create(Instruction::Sub, i->getOperand(0),
-                                         i->getOperand(1), *var, &*i);
+                                         i->getOperand(1), *var, i);
             op = BinaryOperator::Create(Instruction::Mul, op1, i->getOperand(1),
-                                        "gen", &*i);
+                                        "gen", i);
             break;
           case 3:
             op = BinaryOperator::Create(Instruction::Shl, i->getOperand(0),
-                                        i->getOperand(1), *var, &*i);
+                                        i->getOperand(1), *var, i);
             break;
           }
         }
@@ -457,15 +455,15 @@ BasicBlock *BogusControlFlow::createAlteredBasicBlock(BasicBlock *basicBlock,
           case 0:                                    // do nothing
             break;
           case 1:
-            op2 = UnaryOperator::CreateFNeg(i->getOperand(0), *var, &*i);
+            op2 = UnaryOperator::CreateFNeg(i->getOperand(0), *var, i);
             op1 = BinaryOperator::Create(Instruction::FAdd, op2,
-                                         i->getOperand(1), "gen", &*i);
+                                         i->getOperand(1), "gen", i);
             break;
           case 2:
             op = BinaryOperator::Create(Instruction::FSub, i->getOperand(0),
-                                        i->getOperand(1), *var, &*i);
+                                        i->getOperand(1), *var, i);
             op1 = BinaryOperator::Create(Instruction::FMul, op,
-                                         i->getOperand(1), "gen", &*i);
+                                         i->getOperand(1), "gen", i);
             break;
           }
         }
@@ -565,8 +563,8 @@ BasicBlock *BogusControlFlow::createAlteredBasicBlock(BasicBlock *basicBlock,
 
 /* doFinalization
  *
- * Overwrite FunctionPass method to apply the transformations to the whole
- * module. This part obfuscate all the always true predicates of the module.
+ * Apply the transformations to the whole module. This part obfuscates all the
+ * always true predicates of the module.
  * More precisely, the condition which predicate is FCMP_TRUE.
  * It also remove all the functions' basic blocks' and instructions' names.
  */
@@ -627,24 +625,28 @@ bool BogusControlFlow::doF(Module &M) {
   for (std::vector<Instruction *>::iterator i = toEdit.begin();
        i != toEdit.end(); ++i) {
     // if y < 10 || x*(x+1) % 2 == 0
-    opX = new LoadInst(x->getValueType(), (Value *)x, "", (*i));
-    opY = new LoadInst(y->getValueType(), (Value *)y, "", (*i));
+    auto insertAt = (*i)->getIterator();
+    opX = new LoadInst(x->getValueType(), (Value *)x, "", insertAt);
+    opY = new LoadInst(y->getValueType(), (Value *)y, "", insertAt);
 
     op = BinaryOperator::Create(
         Instruction::Sub, (Value *)opX,
-        ConstantInt::get(Type::getInt32Ty(M.getContext()), 1, false), "", (*i));
-    op1 = BinaryOperator::Create(Instruction::Mul, (Value *)opX, op, "", (*i));
+        ConstantInt::get(Type::getInt32Ty(M.getContext()), 1, false), "",
+        insertAt);
+    op1 = BinaryOperator::Create(Instruction::Mul, (Value *)opX, op, "",
+                                 insertAt);
     op = BinaryOperator::Create(
         Instruction::URem, op1,
-        ConstantInt::get(Type::getInt32Ty(M.getContext()), 2, false), "", (*i));
+        ConstantInt::get(Type::getInt32Ty(M.getContext()), 2, false), "",
+        insertAt);
     condition = new ICmpInst(
-        (*i), ICmpInst::ICMP_EQ, op,
+        insertAt, ICmpInst::ICMP_EQ, op,
         ConstantInt::get(Type::getInt32Ty(M.getContext()), 0, false));
     condition2 = new ICmpInst(
-        (*i), ICmpInst::ICMP_SLT, opY,
+        insertAt, ICmpInst::ICMP_SLT, opY,
         ConstantInt::get(Type::getInt32Ty(M.getContext()), 10, false));
     op1 = BinaryOperator::Create(Instruction::Or, (Value *)condition,
-                                 (Value *)condition2, "", (*i));
+                                 (Value *)condition2, "", insertAt);
 
     BranchInst::Create(((BranchInst *)*i)->getSuccessor(0),
                        ((BranchInst *)*i)->getSuccessor(1), (Value *)op1,
@@ -672,20 +674,6 @@ bool BogusControlFlow::doF(Module &M) {
   return true;
 } // end of doFinalization
 
-LegacyBogusControlFlow::LegacyBogusControlFlow() : FunctionPass(ID) {}
-LegacyBogusControlFlow::LegacyBogusControlFlow(bool flag) : FunctionPass(ID) {
-  this->flag = flag;
-}
-
-/* runOnFunction
- *
- * Overwrite FunctionPass method to apply the transformation
- * to the function. See header for more details.
- */
-bool LegacyBogusControlFlow::runOnFunction(Function &F) {
-  return runBogusControlFlow(F);
-} // end of runOnFunction()
-
 BogusControlFlowPass::BogusControlFlowPass() {
   // TODO
   // Implicit with new Pass Manager ?
@@ -697,9 +685,5 @@ PreservedAnalyses BogusControlFlowPass::run(Function &F,
   return runBogusControlFlow(F) ? PreservedAnalyses::none()
                                 : PreservedAnalyses::all();
 }
-
-char LegacyBogusControlFlow::ID = 0;
-static RegisterPass<LegacyBogusControlFlow> X("boguscf",
-                                              "inserting bogus control flow");
 
 } // namespace llvm

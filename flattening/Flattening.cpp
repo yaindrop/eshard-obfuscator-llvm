@@ -17,7 +17,7 @@
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
+#include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Utils/LowerSwitch.h"
@@ -44,11 +44,6 @@ bool Flattening::flatten(Function *f) {
   char scrambling_key[16];
   llvm::cryptoutils->get_bytes(scrambling_key, 16);
   // END OF SCRAMBLER
-
-#if LLVM_VERSION_MAJOR < 9
-  FunctionPass *lower = createLowerSwitchPass();
-  lower->runOnFunction(*f);
-#endif
 
   // Save all original BB
   for (Function::iterator i = f->begin(); i != f->end(); ++i) {
@@ -205,7 +200,7 @@ bool Flattening::flatten(Function *f) {
       BranchInst *br = cast<BranchInst>(i->getTerminator());
       SelectInst *sel =
           SelectInst::Create(br->getCondition(), numCaseTrue, numCaseFalse, "",
-                             i->getTerminator());
+                             i->getTerminator()->getIterator());
 
       // Erase terminator
       i->getTerminator()->eraseFromParent();
@@ -235,18 +230,6 @@ bool Flattening::runFlattening(Function &F) {
   return false;
 }
 
-struct LegacyFlattening : public FunctionPass, public Flattening {
-  static char ID; // Pass identification, replacement for typeid
-  bool flag;
-
-  LegacyFlattening() : FunctionPass(ID) {}
-  LegacyFlattening(bool flag) : FunctionPass(ID) { this->flag = flag; }
-
-  bool runOnFunction(Function &F);
-};
-
-bool LegacyFlattening::runOnFunction(Function &F) { return runFlattening(F); }
-
 FlatteningObfuscatorPass::FlatteningObfuscatorPass() {}
 
 PreservedAnalyses FlatteningObfuscatorPass::run(Function &F,
@@ -262,6 +245,4 @@ PreservedAnalyses FlatteningObfuscatorPass::run(Function &F,
   return analysis;
 }
 
-char LegacyFlattening::ID = 0;
-static RegisterPass<LegacyFlattening> X("flattening", "Call flattening");
 } // namespace llvm

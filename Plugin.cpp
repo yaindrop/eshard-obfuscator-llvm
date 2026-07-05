@@ -2,11 +2,7 @@
 #include "llvm/IR/PassManager.h"
 #include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Passes/PassBuilder.h"
-#if LLVM_VERSION_MAJOR >= 22
 #include "llvm/Plugins/PassPlugin.h"
-#else
-#include "llvm/Passes/PassPlugin.h"
-#endif
 #include "llvm/Support/FormatVariadic.h"
 
 #include "bogus/BogusControlFlow.h"
@@ -123,53 +119,27 @@ extern "C" PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK llvmGetPassPluginInfo() {
 
         // Add optimization once at the start of the pipeline. This does not
         // apply to 'backend' compiles (LTO and ThinLTO link-time pipelines).
-        PB.registerPipelineStartEPCallback([&](ModulePassManager &MPM
-#if LLVM_VERSION_MAJOR >= 12
-                                               ,
-                                               OptimizationLevel O
-#endif
-                                           ) {
+        PB.registerPipelineStartEPCallback([&](ModulePassManager &MPM,
+                                               OptimizationLevel O) {
           addPassesFromEnvVar(MPM, EnvVarPrefix + "PIPELINESTART_PASSES");
         });
 
-#if LLVM_VERSION_MAJOR >= 13
         // Add optimization right after passes that do basic simplification of
         // the input IR.
         PB.registerPipelineEarlySimplificationEPCallback(
-            [](ModulePassManager &MPM, OptimizationLevel O
-#if LLVM_VERSION_MAJOR >= 20
-              ,
-              ThinOrFullLTOPhase
-#endif
-              ) {
+            [](ModulePassManager &MPM, OptimizationLevel O,
+               ThinOrFullLTOPhase) {
               addPassesFromEnvVar(
                   MPM, EnvVarPrefix + "PIPELINEEARLYSIMPLIFICATION_PASSES");
             });
-#endif
 
-#if LLVM_VERSION_MAJOR >= 11
         // Add optimizations at the very end of the function optimization
         // pipeline.
         PB.registerOptimizerLastEPCallback(
-            [](ModulePassManager &MPM, OptimizationLevel O
-#if LLVM_VERSION_MAJOR >= 20
-               ,
-               ThinOrFullLTOPhase
-#endif
-              ) {
+            [](ModulePassManager &MPM, OptimizationLevel O,
+               ThinOrFullLTOPhase) {
               addPassesFromEnvVar(MPM, EnvVarPrefix + "OPTIMIZERLASTEP_PASSES");
             });
-#else
-        // Add optimizations at the very end of the function optimization
-        // pipeline. A key difference between this and the legacy PassManager's
-        // OptimizerLast callback is that this extension point is not triggered
-        // at O0. Extensions to the O0 pipeline should append their passes to
-        // the end of the overall pipeline.
-        PB.registerOptimizerLastEPCallback(
-            [](FunctionPassManager &FPM, OptimizationLevel O) {
-              addPassesFromEnvVar(FPM, EnvVarPrefix + "OPTIMIZERLASTEP_PASSES");
-            });
-#endif
       }};
 }
 } // namespace llvm

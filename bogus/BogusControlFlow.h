@@ -26,7 +26,6 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
-#include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -66,27 +65,13 @@ struct BogusControlFlow {
 
   /* doFinalization
    *
-   * Overwrite FunctionPass method to apply the transformations to the whole
-   * module. This part obfuscate all the always true predicates of the module.
+   * Apply the transformations to the whole module. This part obfuscates all
+   * the always true predicates of the module.
    * More precisely, the condition which predicate is FCMP_TRUE.
    * It also remove all the functions' basic blocks' and instructions' names.
    */
   bool doF(Module &M);
 };
-
-struct LegacyBogusControlFlow : public FunctionPass, public BogusControlFlow {
-  static char ID; // Pass identification
-  LegacyBogusControlFlow();
-  LegacyBogusControlFlow(bool flag);
-
-  /* runOnFunction
-   *
-   * Overwrite FunctionPass method to apply the transformation
-   * to the function. See header for more details.
-   */
-  bool runOnFunction(Function &F);
-
-}; // end of struct BogusControlFlow : public FunctionPass
 
 struct BogusControlFlowPass : public PassInfoMixin<BogusControlFlowPass>,
                               public BogusControlFlow {

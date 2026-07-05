@@ -15,7 +15,7 @@
 #include "utils/Utils.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
+#include "llvm/Plugins/PassPlugin.h"
 
 #include "utils/CryptoUtils.h"
 
@@ -30,23 +30,6 @@ STATISTIC(Split, "Basicblock splitted");
 
 static cl::opt<int> SplitNum("split_num", cl::init(2),
                              cl::desc("Split <split_num> time each BB"));
-
-struct LegacySplitBasicBlock : public FunctionPass, public SplitBasicBlock {
-  static char ID; // Pass identification, replacement for typeid
-
-  LegacySplitBasicBlock() : FunctionPass(ID) {}
-  LegacySplitBasicBlock(bool flag) : FunctionPass(ID) { this->flag = flag; }
-
-  bool runOnFunction(Function &F);
-};
-
-char LegacySplitBasicBlock::ID = 0;
-static RegisterPass<LegacySplitBasicBlock> X("splitbbl",
-                                             "BasicBlock splitting");
-
-bool LegacySplitBasicBlock::runOnFunction(Function &F) {
-  return runSplitBasicBlock(F);
-}
 
 PreservedAnalyses SplitBasicBlockPass::run(Function &F,
                                            FunctionAnalysisManager &AM) {
@@ -132,11 +115,7 @@ void SplitBasicBlock::split(Function *f) {
        * after the allocas in this case.
        */
       if (f->hasFnAttribute("probe-stack") &&
-#if LLVM_VERSION_MAJOR < 13
-          (curr == &curr->getParent()->getEntryBlock())
-#else
           curr->isEntryBlock()
-#endif
           && isa<AllocaInst>(it)) {
         continue;
       }

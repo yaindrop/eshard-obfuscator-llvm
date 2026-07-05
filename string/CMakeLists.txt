@@ -1,8 +1,8 @@
-find_program(XXD xxd)
+find_program(XXD xxd REQUIRED)
 
 # If defined, use the target compiler.
 # For cross-compilation the LLVM-IR generated is still arch specific.
-if (NOT ${TARGET_C_COMPILER})
+if(DEFINED TARGET_C_COMPILER AND NOT "${TARGET_C_COMPILER}" STREQUAL "")
     set(CLANG ${TARGET_C_COMPILER})
 else()
     set(CLANG "${LLVM_TOOLS_BINARY_DIR}/clang")
@@ -24,3 +24,4 @@ add_custom_target(generateDecodeIRHeader ALL
 
 add_dependencies(LLVMObfuscator generateDecodeIRHeader)
 target_sources(LLVMObfuscator PRIVATE StringObfuscation.cpp)
+target_include_directories(LLVMObfuscator PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
