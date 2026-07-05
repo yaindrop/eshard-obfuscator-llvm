@@ -157,7 +157,7 @@ bool BogusControlFlow::runBogusControlFlow(Function &F) {
 void BogusControlFlow::bogus(Function &F) {
   // For statistics and debug
   ++NumFunction;
-  int NumBasicBlocks = 0;
+  [[maybe_unused]] int NumBasicBlocks = 0;
   bool firstTime = true; // First time we do the loop in this function
   bool hasBeenModified = false;
   DEBUG_WITH_TYPE("opt",
