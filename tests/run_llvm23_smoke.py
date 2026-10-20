@@ -67,7 +67,7 @@ def run(args, *, env=None, cwd=None):
 
 
 def require_tool(path):
-  resolved = shutil.which(str(path)) if not Path(path).is_absolute() else str(path)
+  resolved = shutil.which(str(path))
   if resolved is None or not Path(resolved).exists():
     raise SystemExit(f"required tool not found: {path}")
   return Path(resolved)
@@ -171,7 +171,7 @@ def main():
     if "FLOWBIT_SECRET_427" in string_text:
       raise SystemExit("string-encryption: plaintext string is still present")
 
-  print("llvm22 smoke tests passed")
+  print("llvm23 smoke tests passed")
 
 
 if __name__ == "__main__":

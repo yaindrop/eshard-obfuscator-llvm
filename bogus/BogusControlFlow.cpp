@@ -311,13 +311,13 @@ void BogusControlFlow::addBogusFlow(BasicBlock *basicBlock, Function &F) {
 
   // Jump to the original basic block if the condition is true or
   // to the altered block if false.
-  BranchInst::Create(originalBB, alteredBB, (Value *)condition, basicBlock);
+  CondBrInst::Create(condition, originalBB, alteredBB, basicBlock);
   DEBUG_WITH_TYPE(
       "gen",
       errs() << "bcf: Terminator instruction in first basic block: ok\n");
 
   // The altered block loop back on the original one.
-  BranchInst::Create(originalBB, alteredBB);
+  UncondBrInst::Create(originalBB, alteredBB);
   DEBUG_WITH_TYPE(
       "gen", errs() << "bcf: Terminator instruction in altered block: ok\n");
 
@@ -343,7 +343,7 @@ void BogusControlFlow::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   Twine *var6 = new Twine("condition2");
   FCmpInst *condition2 =
       new FCmpInst(originalBB->end(), CmpInst::FCMP_TRUE, LHS, RHS, *var6);
-  BranchInst::Create(originalBBpart2, alteredBB, (Value *)condition2,
+  CondBrInst::Create(condition2, originalBBpart2, alteredBB,
                      originalBB);
   DEBUG_WITH_TYPE("gen", errs()
                              << "bcf: Terminator original basic block: ok\n");
@@ -599,18 +599,13 @@ bool BogusControlFlow::doF(Module &M) {
     for (Function::iterator fi = mi->begin(), fe = mi->end(); fi != fe; ++fi) {
       // fi->setName("");
       Instruction *tbb = fi->getTerminator();
-      if (tbb->getOpcode() == Instruction::Br) {
-        BranchInst *br = (BranchInst *)(tbb);
-        if (br->isConditional()) {
-          FCmpInst *cond = (FCmpInst *)br->getCondition();
-          unsigned opcode = cond->getOpcode();
-          if (opcode == Instruction::FCmp) {
-            if (cond->getPredicate() == FCmpInst::FCMP_TRUE) {
-              DEBUG_WITH_TYPE("gen",
-                              errs() << "bcf: an always true predicate !\n");
-              toDelete.push_back(cond); // The condition
-              toEdit.push_back(tbb);    // The branch using the condition
-            }
+      if (auto *br = dyn_cast<CondBrInst>(tbb)) {
+        if (auto *cond = dyn_cast<FCmpInst>(br->getCondition())) {
+          if (cond->getPredicate() == FCmpInst::FCMP_TRUE) {
+            DEBUG_WITH_TYPE("gen",
+                            errs() << "bcf: an always true predicate !\n");
+            toDelete.push_back(cond); // The condition
+            toEdit.push_back(tbb);    // The branch using the condition
           }
         }
       }
@@ -648,11 +643,12 @@ bool BogusControlFlow::doF(Module &M) {
     op1 = BinaryOperator::Create(Instruction::Or, (Value *)condition,
                                  (Value *)condition2, "", insertAt);
 
-    BranchInst::Create(((BranchInst *)*i)->getSuccessor(0),
-                       ((BranchInst *)*i)->getSuccessor(1), (Value *)op1,
-                       ((BranchInst *)*i)->getParent());
+    auto *branch = cast<CondBrInst>(*i);
+    CondBrInst::Create(op1, branch->getSuccessor(0),
+                       branch->getSuccessor(1),
+                       branch->getParent());
     DEBUG_WITH_TYPE("gen", errs() << "bcf: Erase branch instruction:"
-                                  << *((BranchInst *)*i) << "\n");
+                                  << *branch << "\n");
     (*i)->eraseFromParent(); // erase the branch
   }
   // Erase all the associated conditions we found

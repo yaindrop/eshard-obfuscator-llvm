@@ -1,4 +1,4 @@
-# LLVM 22 smoke tests
+# LLVM 23 smoke tests
 
 These tests validate that the plugin builds and remains usable with a modern
 LLVM toolchain. They are intentionally small but cover the important release
@@ -11,13 +11,13 @@ risks:
 - key passes perform a visible structural transformation;
 - string encryption removes the plaintext fixture string from emitted IR.
 
-Run them through CTest after configuring against LLVM 22:
+Run them through CTest after configuring against LLVM 23:
 
 ```sh
 cmake -S . -B build -G Ninja \
-  -DLLVM_DIR=/opt/homebrew/opt/llvm@22/lib/cmake/llvm \
-  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@22/bin/clang \
-  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@22/bin/clang++
+  -DLLVM_DIR=/opt/homebrew/opt/llvm/lib/cmake/llvm \
+  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang \
+  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```

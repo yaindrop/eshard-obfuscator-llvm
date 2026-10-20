@@ -71,12 +71,7 @@ bool Flattening::flatten(Function *f) {
   BasicBlock *insert = &*tmp;
 
   // If main begin with an if
-  BranchInst *br = NULL;
-  if (isa<BranchInst>(insert->getTerminator())) {
-    br = cast<BranchInst>(insert->getTerminator());
-  }
-
-  if (br != NULL) {
+  if (isa<CondBrInst, UncondBrInst>(insert->getTerminator())) {
     BasicBlock::iterator i = insert->end();
     --i;
 
@@ -107,14 +102,14 @@ bool Flattening::flatten(Function *f) {
 
   // Move first BB on top
   insert->moveBefore(loopEntry);
-  BranchInst::Create(loopEntry, insert);
+  UncondBrInst::Create(loopEntry, insert);
 
   // loopEnd jump to loopEntry
-  BranchInst::Create(loopEntry, loopEnd);
+  UncondBrInst::Create(loopEntry, loopEnd);
 
   BasicBlock *swDefault =
       BasicBlock::Create(f->getContext(), "switchDefault", f, loopEnd);
-  BranchInst::Create(loopEnd, swDefault);
+  UncondBrInst::Create(loopEnd, swDefault);
 
   // Create switch instruction itself and set condition
   switchI = SwitchInst::Create(&*f->begin(), swDefault, 0, loopEntry);
@@ -123,7 +118,7 @@ bool Flattening::flatten(Function *f) {
   // Remove branch jump from 1st BB and make a jump to the while
   f->begin()->getTerminator()->eraseFromParent();
 
-  BranchInst::Create(loopEntry, &*f->begin());
+  UncondBrInst::Create(loopEntry, &*f->begin());
   // Put all BB in the switch
   for (std::vector<BasicBlock *>::iterator b = origBB.begin();
        b != origBB.end(); ++b) {
@@ -169,7 +164,7 @@ bool Flattening::flatten(Function *f) {
 
       // Update switchVar and jump to the end of loop
       new StoreInst(numCase, load->getPointerOperand(), i);
-      BranchInst::Create(loopEnd, i);
+      UncondBrInst::Create(loopEnd, i);
       continue;
     }
 
@@ -197,7 +192,7 @@ bool Flattening::flatten(Function *f) {
       }
 
       // Create a SelectInst
-      BranchInst *br = cast<BranchInst>(i->getTerminator());
+      CondBrInst *br = cast<CondBrInst>(i->getTerminator());
       SelectInst *sel =
           SelectInst::Create(br->getCondition(), numCaseTrue, numCaseFalse, "",
                              i->getTerminator()->getIterator());
@@ -207,7 +202,7 @@ bool Flattening::flatten(Function *f) {
 
       // Update switchVar and jump to the end of loop
       new StoreInst(sel, load->getPointerOperand(), i);
-      BranchInst::Create(loopEnd, i);
+      UncondBrInst::Create(loopEnd, i);
       continue;
     }
   }
