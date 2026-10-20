@@ -1,21 +1,21 @@
-# LLVM 22 obfuscator plugin
+# LLVM 23 obfuscator plugin
 
-This fork is an LLVM 22 native obfuscation pass plugin. It applies
+This fork is an LLVM 23 native obfuscation pass plugin. It applies
 transformations on [LLVM IR](https://llvm.org/docs/LangRef.html) through the
 modern LLVM pass plugin API.
 
-Only LLVM 22.x is supported. Older LLVM pass-manager compatibility code has
+Only LLVM 23.x is supported. Older LLVM pass-manager compatibility code has
 been removed on purpose.
 
 ## Compilation
 
-Build against an LLVM 22 installation:
+Build against an LLVM 23 installation (Homebrew's unversioned `llvm` currently provides 23):
 
 ```
 cmake -S . -B build -G Ninja \
-  -DLLVM_DIR=/opt/homebrew/opt/llvm@22/lib/cmake/llvm \
-  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm@22/bin/clang \
-  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm@22/bin/clang++
+  -DLLVM_DIR=/opt/homebrew/opt/llvm/lib/cmake/llvm \
+  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang \
+  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```

@@ -171,7 +171,7 @@ def main():
     if "FLOWBIT_SECRET_427" in string_text:
       raise SystemExit("string-encryption: plaintext string is still present")
 
-  print("llvm22 smoke tests passed")
+  print("llvm23 smoke tests passed")
 
 
 if __name__ == "__main__":

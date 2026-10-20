@@ -9,8 +9,8 @@ find_package(LLVM PATHS "${LLVM_DIR}" REQUIRED CONFIG NO_DEFAULT_PATH)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-if(NOT LLVM_VERSION_MAJOR EQUAL 22)
-  message(FATAL_ERROR "This fork is LLVM 22 native and requires LLVM 22.x")
+if(NOT LLVM_VERSION_MAJOR EQUAL 23)
+  message(FATAL_ERROR "This fork is LLVM 23 native and requires LLVM 23.x")
 endif()
 
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -25,7 +25,7 @@ message(STATUS "LLVM libraries: ${LLVM_LIBRARY_DIRS}")
 message(STATUS "LLVM Config: ASSERTIONS:${LLVM_ENABLE_ASSERTIONS}, "
                "EH:${LLVM_ENABLE_EH}, RTTI:${LLVM_ENABLE_RTTI}")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (LLVM_ENABLE_LIBCXX)
@@ -64,10 +64,10 @@ if(BUILD_TESTING)
   find_package(Python3 COMPONENTS Interpreter)
   if(Python3_Interpreter_FOUND)
     add_test(
-      NAME llvm22-smoke
+      NAME llvm23-smoke
       COMMAND
         ${Python3_EXECUTABLE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_llvm22_smoke.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/run_llvm23_smoke.py
         --plugin $<TARGET_FILE:LLVMObfuscator>
         --llvm-bin ${LLVM_TOOLS_BINARY_DIR}
         --filecheck ${LLVM_TOOLS_BINARY_DIR}/FileCheck
